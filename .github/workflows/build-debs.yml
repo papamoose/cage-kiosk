@@ -37,7 +37,7 @@ jobs:
           apt-get update
           apt-cache policy libwayland-dev libdrm-dev | grep -E "^lib|Candidate" 
           apt-get install -y --no-install-recommends \
-            build-essential \
+            build-essential git \
             ca-certificates curl dpkg-dev debhelper fakeroot \
             meson ninja-build pkg-config scdoc \
             libwayland-dev libdrm-dev libxkbcommon-dev libpixman-1-dev \
