@@ -1,0 +1,9 @@
+cage (0.3.0-1) unstable; urgency=medium
+
+  * Kiosk build of upstream cage: -t <transform> output rotation,
+    -T touch-only seat, -c X,Y initial cursor position, and input
+    device to output mapping for unnamed devices (combined display
+    panels).
+  * Requires libwlroots-0.20 from this repository.
+
+ -- papamoose <philip@kauffman.me>  Sat, 12 Sep 2026 06:10:00 -0600

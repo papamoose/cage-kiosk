@@ -1,0 +1,88 @@
+name: build-debs
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # arm64 build in a Debian trixie container (emulated via QEMU on the
+    # x86 runner). Matches the target: Raspberry Pi 5, Debian 13 aarch64.
+    container:
+      image: debian:trixie
+      options: --platform linux/arm64
+    env:
+      WLROOTS_VERSION: "0.20.2"
+      CAGE_VERSION: "0.3.0"
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            ca-certificates curl dpkg-dev debhelper fakeroot \
+            meson ninja-build pkg-config scdoc \
+            libwayland-dev libdrm-dev libxkbcommon-dev libpixman-1-dev \
+            libegl-dev libgbm-dev libgl-dev liblcms2-dev \
+            libx11-dev libx11-xcb-dev libxcursor-dev \
+            wayland-protocols xwayland hwdata libdisplay-info-dev
+
+      - name: Build wlroots
+        run: |
+          set -e
+          curl -fsSL -o "wlroots-${WLROOTS_VERSION}.tar.gz" \
+            "https://gitlab.freedesktop.org/wlroots/wlroots/-/archive/${WLROOTS_VERSION}/wlroots-${WLROOTS_VERSION}.tar.gz"
+          tar xzf "wlroots-${WLROOTS_VERSION}.tar.gz"
+          cp -a wlroots-debian/. "wlroots-${WLROOTS_VERSION}/debian/"
+          (cd "wlroots-${WLROOTS_VERSION}" && DEB_BUILD_OPTIONS=nocheck dpkg-buildpackage -us -uc -b)
+          mkdir -p out
+          mv "wlroots_${WLROOTS_VERSION}-1_arm64.deb" out/
+          mv "wlroots_0.20.2-1_arm64.buildinfo" "wlroots_0.20.2-1_arm64.changes" out/ 2>/dev/null || true
+
+      - name: Install wlroots debs
+        run: |
+          dpkg -i out/libwlroots-0.20_${WLROOTS_VERSION}-1_arm64.deb \
+                  out/libwlroots-0.20-dev_${WLROOTS_VERSION}-1_arm64.deb
+
+      - name: Build cage
+        run: |
+          set -e
+          cp -a cage "cage-${CAGE_VERSION}"
+          (cd "cage-${CAGE_VERSION}" && DEB_BUILD_OPTIONS=nocheck dpkg-buildpackage -us -uc -b)
+          mv "cage-${CAGE_VERSION}/../cage_${CAGE_VERSION}-1_arm64.deb" out/
+
+      - name: List output
+        run: ls -la out/
+
+      - name: Upload debs
+        uses: actions/upload-artifact@v4
+        with:
+          name: debs-arm64
+          path: out/*.deb
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download debs
+        uses: actions/download-artifact@v4
+        with:
+          name: debs-arm64
+          path: debs
+
+      - name: Create release
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "Kiosk debs ${GITHUB_REF_NAME}" \
+            --notes "arm64 Debian trixie debs: libwlroots-0.20 and the kiosk cage build. Install both, then \`cage -t 90 -c 960,1199 -- firefox-esr --kiosk <url>\`." \
+            debs/*.deb
+        env:
+          GH_TOKEN: ${{ github.token }}

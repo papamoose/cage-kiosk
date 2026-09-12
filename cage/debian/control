@@ -1,0 +1,26 @@
+Source: cage
+Section: x11
+Priority: optional
+Maintainer: papamoose <philip@kauffman.me>
+Build-Depends: debhelper-compat (= 13),
+ meson,
+ ninja-build,
+ pkg-config,
+ libwlroots-0.20-dev (>= 0.20.2),
+ libwayland-dev,
+ libxkbcommon-dev,
+ scdoc
+Standards-Version: 4.6.2
+Rules-Requires-Root: no
+
+Package: cage
+Architecture: any
+Depends: ${misc:Depends}, ${shlibs:Depends}
+Description: Wayland kiosk compositor (kiosk build)
+ Cage runs a single, maximized Wayland application in kiosk mode.
+ This build adds kiosk options to upstream cage: -t <transform>
+ output rotation, -T touch-only seat, -c X,Y initial cursor
+ position, and input device to output mapping for unnamed
+ devices (combined display panels).
+ Built against the matching libwlroots-0.20 package from this
+ repository (Debian trixie only ships wlroots 0.18).

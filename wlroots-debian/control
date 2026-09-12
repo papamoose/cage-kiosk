@@ -1,0 +1,42 @@
+Source: wlroots
+Section: libs
+Priority: optional
+Maintainer: papamoose <philip@kauffman.me>
+Build-Depends: debhelper-compat (= 13),
+ meson,
+ ninja-build,
+ pkg-config,
+ libdrm-dev,
+ libegl-dev,
+ libgbm-dev,
+ libgl-dev,
+ liblcms2-dev,
+ libpixman-1-dev,
+ libwayland-dev,
+ libx11-dev,
+ libx11-xcb-dev,
+ libxkbcommon-dev,
+ wayland-protocols,
+ xwayland,
+ hwdata,
+ libdisplay-info-dev
+Standards-Version: 4.6.2
+Rules-Requires-Root: no
+
+Package: libwlroots-0.20
+Architecture: any
+Depends: ${misc:Depends}, ${shlibs:Depends}
+Description: Wayland compositor backend library (unofficial build)
+ libwlroots is a library for writing Wayland compositors.
+ This is an unofficial build of wlroots 0.20 for Debian trixie arm64
+ (Raspberry Pi OS), which only packages wlroots 0.18.
+
+Package: libwlroots-0.20-dev
+Architecture: any
+Section: libdevel
+Depends: libwlroots-0.20 (= ${binary:Version}),
+ ${misc:Depends},
+ pkg-config
+Description: Wayland compositor backend library development files
+ Headers and pkg-config files for building compositors against
+ libwlroots-0.20 (unofficial build).

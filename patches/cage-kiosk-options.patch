@@ -1,0 +1,350 @@
+From cad093f01bd7fa93e5957ce275ec6364c8b805cb Mon Sep 17 00:00:00 2001
+From: Phil Kauffman <philip@kauffman.me>
+Date: Sat, 12 Sep 2026 05:57:09 -0600
+Subject: [PATCH] seat: add kiosk options (-t transform, -T touch-only, -c
+ cursor position)
+
+Add three options for kiosk setups:
+
+- -t <transform> applies an output transform to all outputs
+  (normal/90/180/270 and the flipped variants, plus left/right
+  aliases). Use it to correct a physically rotated panel, e.g. the
+  Raspberry Pi 10" DSI display.
+
+- -T creates a touch-only seat: no pointer capability is advertised
+  and no cursor is drawn.
+
+- -c X,Y places the initial cursor at a layout position instead of
+  the center of the output layout, so it can be kept out of the way
+  of the application's on-screen controls.
+
+Map input devices without an output name to the sole connected
+output. Combined display panels (screen + touch in one device, e.g.
+the Raspberry Pi 10" DSI display) report no output name; without a
+mapping wlroots never applies the output transform to their events,
+which misaligns touch on rotated outputs. Devices that arrive before
+any output are mapped when the first output is added.
+
+Built and verified on a Raspberry Pi 5 (Debian trixie, aarch64) with
+wlroots 0.20.2 and firefox-esr --kiosk.
+---
+ cage.1.scd | 16 +++++++++++++++
+ cage.c     | 59 ++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ output.c   | 23 +++++++++++++++++++++
+ seat.c     | 45 +++++++++++++++++++++++++++++++++++++----
+ seat.h     |  3 ++-
+ server.h   |  8 +++++++-
+ 6 files changed, 146 insertions(+), 8 deletions(-)
+
+diff --git a/cage.1.scd b/cage.1.scd
+index ed1f518..856b313 100644
+--- a/cage.1.scd
++++ b/cage.1.scd
+@@ -33,6 +33,22 @@ activities outside the scope of the running application are prevented.
+ *-s*
+ 	Allow VT switching
+ 
++*-t* <transform>
++	Output transform applied to all outputs. Supported values are
++	*normal*, *90*, *180*, *270*, *flipped*, *90flipped*, *180flipped*,
++	*270flipped* (aliases: *left*, *right*). Use this to correct a
++	physically rotated panel.
++
++*-T*
++	Create a touch-only seat: no pointer capability is advertised and no
++	cursor is drawn. Useful for touch kiosks where a persistent cursor or
++	hover state is unwanted.
++
++*-c* <X>,<Y>
++	Place the initial cursor at position X,Y in layout coordinates
++	(default: the center of the output layout). Use this to keep the
++	cursor out of the way of the application's on-screen controls.
++
+ *-v*
+ 	Show the version number and exit.
+ 
+diff --git a/cage.c b/cage.c
+index f367d00..2ef9104 100644
+--- a/cage.c
++++ b/cage.c
+@@ -268,6 +268,10 @@ usage(FILE *file, const char *cage)
+ 		" -m extend Extend the display across all connected outputs (default)\n"
+ 		" -m last Use only the last connected output\n"
+ 		" -s\t Allow VT switching\n"
++		" -t TRANS Output transform: normal, 90, 180, 270, flipped,\n"
++		"         90flipped, 180flipped, 270flipped (aliases: left, right)\n"
++		" -T\t Touch-only seat: no pointer capability, no cursor\n"
++		" -c X,Y\t Place the initial cursor at position X,Y (default: center)\n"
+ 		" -v\t Show the version number and exit\n"
+ 		" -x\t Disable XWayland\n"
+ 		"\n"
+@@ -275,13 +279,42 @@ usage(FILE *file, const char *cage)
+ 		cage);
+ }
+ 
++static bool
++parse_transform(const char *arg, enum wl_output_transform *transform)
++{
++	struct {
++		const char *name;
++		enum wl_output_transform value;
++	} transforms[] = {
++		{ "normal", WL_OUTPUT_TRANSFORM_NORMAL },
++		{ "90", WL_OUTPUT_TRANSFORM_90 },
++		{ "180", WL_OUTPUT_TRANSFORM_180 },
++		{ "270", WL_OUTPUT_TRANSFORM_270 },
++		{ "flipped", WL_OUTPUT_TRANSFORM_FLIPPED },
++		{ "90flipped", WL_OUTPUT_TRANSFORM_FLIPPED_90 },
++		{ "180flipped", WL_OUTPUT_TRANSFORM_FLIPPED_180 },
++		{ "270flipped", WL_OUTPUT_TRANSFORM_FLIPPED_270 },
++		{ "left", WL_OUTPUT_TRANSFORM_270 },
++		{ "right", WL_OUTPUT_TRANSFORM_90 },
++	};
++
++	for (size_t i = 0; i < sizeof(transforms) / sizeof(transforms[0]); i++) {
++		if (strcmp(arg, transforms[i].name) == 0) {
++			*transform = transforms[i].value;
++			return true;
++		}
++	}
++	return false;
++}
++
+ static bool
+ parse_args(struct cg_server *server, int argc, char *argv[])
+ {
+ 	server->enable_xwayland = true;
++	server->output_transform = WL_OUTPUT_TRANSFORM_NORMAL;
+ 
+ 	int c;
+-	while ((c = getopt(argc, argv, "dDhm:svx")) != -1) {
++	while ((c = getopt(argc, argv, "dDhm:svxt:Tc:")) != -1) {
+ 		switch (c) {
+ 		case 'd':
+ 			server->xdg_decoration = true;
+@@ -302,6 +335,28 @@ parse_args(struct cg_server *server, int argc, char *argv[])
+ 		case 's':
+ 			server->allow_vt_switch = true;
+ 			break;
++		case 't':
++			if (!parse_transform(optarg, &server->output_transform)) {
++				fprintf(stderr, "Invalid transform: %s\n", optarg);
++				usage(stderr, argv[0]);
++				return false;
++			}
++			break;
++		case 'T':
++			server->touch_only = true;
++			break;
++		case 'c': {
++			int x, y;
++			if (sscanf(optarg, "%d,%d", &x, &y) != 2) {
++				fprintf(stderr, "Invalid cursor position: %s (expected X,Y)\n", optarg);
++				usage(stderr, argv[0]);
++				return false;
++			}
++			server->initial_cursor_x = x;
++			server->initial_cursor_y = y;
++			server->initial_cursor_set = true;
++			break;
++		}
+ 		case 'v':
+ 			fprintf(stdout, "Cage version " CAGE_VERSION "\n");
+ 			exit(0);
+@@ -691,7 +746,7 @@ main(int argc, char *argv[])
+ 		goto end;
+ 	}
+ 
+-	seat_center_cursor(server.seat);
++	seat_init_cursor(server.seat);
+ 	wl_display_run(server.wl_display);
+ 
+ #if CAGE_HAS_XWAYLAND
+diff --git a/output.c b/output.c
+index df932dd..4efa5c3 100644
+--- a/output.c
++++ b/output.c
+@@ -28,6 +28,8 @@
+ #include <wlr/types/wlr_output.h>
+ #include <wlr/types/wlr_output_layout.h>
+ #include <wlr/types/wlr_output_management_v1.h>
++#include <wlr/types/wlr_pointer.h>
++#include <wlr/types/wlr_touch.h>
+ #include <wlr/types/wlr_output_swapchain_manager.h>
+ #include <wlr/types/wlr_scene.h>
+ #include <wlr/types/wlr_xdg_shell.h>
+@@ -35,6 +37,7 @@
+ #include <wlr/util/region.h>
+ 
+ #include "output.h"
++#include "seat.h"
+ #include "server.h"
+ #include "view.h"
+ #if CAGE_HAS_XWAYLAND
+@@ -280,6 +283,7 @@ handle_new_output(struct wl_listener *listener, void *data)
+ 
+ 	struct wlr_output_state state = {0};
+ 	wlr_output_state_set_enabled(&state, true);
++	wlr_output_state_set_transform(&state, server->output_transform);
+ 	if (!wl_list_empty(&wlr_output->modes)) {
+ 		struct wlr_output_mode *preferred_mode = wlr_output_preferred_mode(wlr_output);
+ 		if (preferred_mode) {
+@@ -312,6 +316,25 @@ handle_new_output(struct wl_listener *listener, void *data)
+ 
+ 	view_position_all(output->server);
+ 	update_output_manager_config(output->server);
++
++	/* Input devices that arrived before this output were never mapped, as
++	 * they had no output to map to. Map the unnamed ones now (covers touch
++	 * controllers of combined display panels on rotated outputs). */
++	struct cg_seat *seat = server->seat;
++	if (seat) {
++		struct cg_touch *touch;
++		wl_list_for_each (touch, &seat->touch, link) {
++			if (touch->touch->output_name == NULL) {
++				map_device_to_sole_output(seat, &touch->touch->base);
++			}
++		}
++		struct cg_pointer *pointer;
++		wl_list_for_each (pointer, &seat->pointers, link) {
++			if (pointer->pointer->output_name == NULL) {
++				map_device_to_sole_output(seat, &pointer->pointer->base);
++			}
++		}
++	}
+ }
+ 
+ void
+diff --git a/seat.c b/seat.c
+index ef3d993..1e034a0 100644
+--- a/seat.c
++++ b/seat.c
+@@ -26,6 +26,8 @@
+ #include <wlr/types/wlr_primary_selection.h>
+ #include <wlr/types/wlr_relative_pointer_v1.h>
+ #include <wlr/types/wlr_scene.h>
++#include <wlr/types/wlr_output_layout.h>
++#include <wlr/types/wlr_pointer.h>
+ #include <wlr/types/wlr_seat.h>
+ #include <wlr/types/wlr_touch.h>
+ #include <wlr/types/wlr_virtual_keyboard_v1.h>
+@@ -135,11 +137,30 @@ update_capabilities(struct cg_seat *seat)
+ 	}
+ }
+ 
++/* Map an input device without a name to the sole connected output, if
++ * there is exactly one. Some panels combine the screen and the touch
++ * controller (e.g. the Raspberry Pi 10" DSI display) and report no output
++ * name; without a mapping wlroots never applies the output transform to
++ * their events, which misaligns touch on rotated outputs. */
++void
++map_device_to_sole_output(struct cg_seat *seat, struct wlr_input_device *device)
++{
++	if (wl_list_length(&seat->server->outputs) != 1) {
++		return;
++	}
++
++	struct cg_output *output = wl_container_of(seat->server->outputs.next, output, link);
++	wlr_log(WLR_INFO,
++		"Input device %s has no output name; mapping it to the sole output %s\n",
++		device->name, output->wlr_output->name);
++	wlr_cursor_map_input_to_output(seat->cursor, device, output->wlr_output);
++}
++
+ static void
+ map_input_device_to_output(struct cg_seat *seat, struct wlr_input_device *device, const char *output_name)
+ {
+ 	if (!output_name) {
+-		wlr_log(WLR_INFO, "Input device %s cannot be mapped to an output device\n", device->name);
++		map_device_to_sole_output(seat, device);
+ 		return;
+ 	}
+ 
+@@ -207,6 +228,12 @@ handle_pointer_destroy(struct wl_listener *listener, void *data)
+ static void
+ handle_new_pointer(struct cg_seat *seat, struct wlr_pointer *wlr_pointer)
+ {
++	if (seat->server->touch_only) {
++		/* Touch-only seat: skip pointer devices entirely so the seat never
++		 * advertises the pointer capability and no cursor is drawn. */
++		return;
++	}
++
+ 	struct cg_pointer *pointer = calloc(1, sizeof(struct cg_pointer));
+ 	if (!pointer) {
+ 		wlr_log(WLR_ERROR, "Cannot allocate pointer");
+@@ -987,10 +1014,20 @@ seat_set_focus(struct cg_seat *seat, struct cg_view *view)
+ }
+ 
+ void
+-seat_center_cursor(struct cg_seat *seat)
++seat_init_cursor(struct cg_seat *seat)
+ {
+-	/* Place the cursor in the center of the output layout. */
++	/* Place the cursor in the center of the output layout, or at the
++	 * position given with -c. Kiosk setups usually want the cursor out of
++	 * the way of on-screen controls (e.g. cage -c 960,1199). */
+ 	struct wlr_box layout_box;
+ 	wlr_output_layout_get_box(seat->server->output_layout, NULL, &layout_box);
+-	wlr_cursor_warp(seat->cursor, NULL, layout_box.width / 2, layout_box.height / 2);
++
++	int x = layout_box.width / 2;
++	int y = layout_box.height / 2;
++	if (seat->server->initial_cursor_set) {
++		x = seat->server->initial_cursor_x;
++		y = seat->server->initial_cursor_y;
++	}
++
++	wlr_cursor_warp(seat->cursor, NULL, x, y);
+ }
+diff --git a/seat.h b/seat.h
+index b48d545..2302d8f 100644
+--- a/seat.h
++++ b/seat.h
+@@ -89,7 +89,8 @@ struct cg_seat *seat_create(struct cg_server *server, struct wlr_backend *backen
+ void seat_destroy(struct cg_seat *seat);
+ struct cg_view *seat_get_focus(struct cg_seat *seat);
+ void seat_set_focus(struct cg_seat *seat, struct cg_view *view);
+-void seat_center_cursor(struct cg_seat *seat);
++void seat_init_cursor(struct cg_seat *seat);
++void map_device_to_sole_output(struct cg_seat *seat, struct wlr_input_device *device);
+ 
+ void handle_request_set_shape(struct wl_listener *listener, void *data);
+ #endif
+diff --git a/server.h b/server.h
+index 4287862..294f986 100644
+--- a/server.h
++++ b/server.h
+@@ -4,8 +4,9 @@
+ #include "config.h"
+ 
+ #include <wayland-server-core.h>
++#include <wayland-server-protocol.h>
+ #include <wlr/config.h>
+-#include <wlr/types/wlr_drm_lease_v1.h>
++#include <wlr/types/wlr_drm.h>
+ #include <wlr/types/wlr_idle_inhibit_v1.h>
+ #include <wlr/types/wlr_idle_notify_v1.h>
+ #include <wlr/types/wlr_output_layout.h>
+@@ -38,6 +39,7 @@ struct cg_server {
+ 	struct wl_list inhibitors;
+ 
+ 	enum cg_multi_output_mode output_mode;
++	enum wl_output_transform output_transform;
+ 	struct wlr_output_layout *output_layout;
+ 	struct wlr_scene_output_layout *scene_output_layout;
+ 
+@@ -80,6 +82,10 @@ struct cg_server {
+ 	bool enable_xwayland;
+ 	bool return_app_code;
+ 	bool terminated;
++	bool touch_only;
++	int initial_cursor_x;
++	int initial_cursor_y;
++	bool initial_cursor_set;
+ 	enum wlr_log_importance log_level;
+ };
+ 
+-- 
+2.53.0
+

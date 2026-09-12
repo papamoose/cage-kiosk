@@ -1,0 +1,5 @@
+wlroots (0.20.2-1) unstable; urgency=medium
+
+  * Unofficial arm64 build for the cage kiosk (trixie only ships 0.18).
+
+ -- papamoose <philip@kauffman.me>  Sat, 12 Sep 2026 06:10:00 -0600
