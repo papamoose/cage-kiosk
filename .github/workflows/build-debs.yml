@@ -19,6 +19,11 @@ jobs:
       WLROOTS_VERSION: "0.20.2"
       CAGE_VERSION: "0.3.0"
     steps:
+      - name: Install git (checkout needs it to fetch submodules)
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates git
+
       - name: Check out
         uses: actions/checkout@v4
         with:
