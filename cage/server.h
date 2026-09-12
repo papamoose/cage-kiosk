@@ -6,7 +6,7 @@
 #include <wayland-server-core.h>
 #include <wayland-server-protocol.h>
 #include <wlr/config.h>
-#include <wlr/types/wlr_drm.h>
+#include <wlr/types/wlr_drm_lease_v1.h>
 #include <wlr/types/wlr_idle_inhibit_v1.h>
 #include <wlr/types/wlr_idle_notify_v1.h>
 #include <wlr/types/wlr_output_layout.h>

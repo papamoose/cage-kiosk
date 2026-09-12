@@ -1,41 +1,3 @@
-From cad093f01bd7fa93e5957ce275ec6364c8b805cb Mon Sep 17 00:00:00 2001
-From: Phil Kauffman <philip@kauffman.me>
-Date: Sat, 12 Sep 2026 05:57:09 -0600
-Subject: [PATCH] seat: add kiosk options (-t transform, -T touch-only, -c
- cursor position)
-
-Add three options for kiosk setups:
-
-- -t <transform> applies an output transform to all outputs
-  (normal/90/180/270 and the flipped variants, plus left/right
-  aliases). Use it to correct a physically rotated panel, e.g. the
-  Raspberry Pi 10" DSI display.
-
-- -T creates a touch-only seat: no pointer capability is advertised
-  and no cursor is drawn.
-
-- -c X,Y places the initial cursor at a layout position instead of
-  the center of the output layout, so it can be kept out of the way
-  of the application's on-screen controls.
-
-Map input devices without an output name to the sole connected
-output. Combined display panels (screen + touch in one device, e.g.
-the Raspberry Pi 10" DSI display) report no output name; without a
-mapping wlroots never applies the output transform to their events,
-which misaligns touch on rotated outputs. Devices that arrive before
-any output are mapped when the first output is added.
-
-Built and verified on a Raspberry Pi 5 (Debian trixie, aarch64) with
-wlroots 0.20.2 and firefox-esr --kiosk.
----
- cage.1.scd | 16 +++++++++++++++
- cage.c     | 59 ++++++++++++++++++++++++++++++++++++++++++++++++++++--
- output.c   | 23 +++++++++++++++++++++
- seat.c     | 45 +++++++++++++++++++++++++++++++++++++----
- seat.h     |  3 ++-
- server.h   |  8 +++++++-
- 6 files changed, 146 insertions(+), 8 deletions(-)
-
 diff --git a/cage.1.scd b/cage.1.scd
 index ed1f518..856b313 100644
 --- a/cage.1.scd
@@ -312,20 +274,17 @@ index b48d545..2302d8f 100644
  void handle_request_set_shape(struct wl_listener *listener, void *data);
  #endif
 diff --git a/server.h b/server.h
-index 4287862..294f986 100644
+index 4287862..c56d893 100644
 --- a/server.h
 +++ b/server.h
-@@ -4,8 +4,9 @@
+@@ -4,6 +4,7 @@
  #include "config.h"
  
  #include <wayland-server-core.h>
 +#include <wayland-server-protocol.h>
  #include <wlr/config.h>
--#include <wlr/types/wlr_drm_lease_v1.h>
-+#include <wlr/types/wlr_drm.h>
+ #include <wlr/types/wlr_drm_lease_v1.h>
  #include <wlr/types/wlr_idle_inhibit_v1.h>
- #include <wlr/types/wlr_idle_notify_v1.h>
- #include <wlr/types/wlr_output_layout.h>
 @@ -38,6 +39,7 @@ struct cg_server {
  	struct wl_list inhibitors;
  
@@ -345,6 +304,3 @@ index 4287862..294f986 100644
  	enum wlr_log_importance log_level;
  };
  
--- 
-2.53.0
-
