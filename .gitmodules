@@ -1,0 +1,3 @@
+[submodule "cage"]
+	path = cage
+	url = https://github.com/cage-kiosk/cage

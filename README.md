@@ -25,9 +25,10 @@ cage -s -m last -t 90 -c 960,1199 -- firefox-esr --kiosk http://<url>/
 ## Repository layout
 
 ```
-cage/               cage source (upstream + kiosk options) with debian/
+cage/               git submodule: upstream cage, pinned to a commit
+cage-debian/        debian/ packaging copied into the cage tree at build time
 wlroots-debian/     debian/ packaging copied over the wlroots tarball
-patches/            the kiosk patch, for reference and upstreaming
+patches/            the kiosk patch, applied over the submodule at build time
 ```
 
 ## Building
@@ -36,23 +37,28 @@ GitHub Actions (`.github/workflows/build-debs.yml`) builds on every
 push to `main` and on tags:
 
 1. Runs a Debian trixie container with `--platform linux/arm64`
-   (QEMU-emulated on the x86 runner).
+   (native on the self-hosted arm64 runner).
 2. Downloads the wlroots tarball pinned in `WLROOTS_VERSION`, applies
    `wlroots-debian/`, and runs `dpkg-buildpackage`.
-3. Builds `cage/` the same way.
+3. Applies `patches/cage-kiosk-options.patch` over the `cage/`
+   submodule, copies in `cage-debian/`, and builds the same way.
 4. Uploads the .debs as an artifact. On a tag (`v*`), creates a
    GitHub release and attaches the .debs.
 
 Version pins live in the workflow `env` block. To bump wlroots or
 cage, change the pin and the matching `debian/changelog` entry, then
-push.
+push. To bump the cage submodule, check out the new commit, rebase the
+patch if the base moved, and commit the new submodule pointer.
 
 Local build (needs an arm64 machine or container with the trixie
 build dependencies from the workflow):
 
 ```
+git submodule update --init
 dpkg -i libwlroots-0.20_*.deb libwlroots-0.20-dev_*.deb
-(cd cage && dpkg-buildpackage -us -uc -b)
+git -C cage apply patches/cage-kiosk-options.patch
+cp -a cage cage-build && cp -a cage-debian/. cage-build/debian/
+(cd cage-build && dpkg-buildpackage -us -uc -b)
 ```
 
 ## Installing on a kiosk

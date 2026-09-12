@@ -24,6 +24,7 @@ jobs:
         with:
           # self-hosted runners: clean stale state between runs
           clean: true
+          submodules: recursive
 
       - name: Install build dependencies
         run: |
@@ -69,7 +70,10 @@ jobs:
         run: |
           set -e
           rm -rf "cage-${CAGE_VERSION}" out/cage_*.deb
+          # kiosk options on top of the pinned upstream commit
+          git -C cage apply ../patches/cage-kiosk-options.patch
           cp -a cage "cage-${CAGE_VERSION}"
+          cp -a cage-debian/. "cage-${CAGE_VERSION}/debian/"
           (cd "cage-${CAGE_VERSION}" && DEB_BUILD_OPTIONS=nocheck dpkg-buildpackage -us -uc -b)
           mv "cage-${CAGE_VERSION}/../cage_${CAGE_VERSION}-1_arm64.deb" out/
 
