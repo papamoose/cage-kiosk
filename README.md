@@ -1,6 +1,6 @@
 # cage-kiosk
 
-Builds arm64 Debian .deb packages for a Raspberry Pi 5 kiosk.
+Builds arm64 Debian .deb packages for a Raspberry Pi 5 kiosk to run Firefox which points at ImmichFrame.
 
 This builds on top of [cage-kiosk/cage](https://github.com/cage-kiosk/cage) and is kept
 as a submodule pinned to the upstream commit plus `patches/cage-kiosk-options.patch`,
