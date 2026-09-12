@@ -8,9 +8,9 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    # arm64 build in a Debian trixie container (emulated via QEMU on the
-    # x86 runner). Matches the target: Raspberry Pi 5, Debian 13 aarch64.
+    # Native arm64 build on the self-hosted runner; the trixie container
+    # pins the build environment to the target distro.
+    runs-on: [self-hosted, arm64]
     container:
       image: debian:trixie
       options: --platform linux/arm64
@@ -20,6 +20,10 @@ jobs:
     steps:
       - name: Check out
         uses: actions/checkout@v4
+        with:
+          # self-hosted runners: clean stale state between runs
+          clean: true
+          clean-all-files: true
 
       - name: Install build dependencies
         run: |
@@ -35,6 +39,7 @@ jobs:
       - name: Build wlroots
         run: |
           set -e
+          rm -rf out wlroots-*
           curl -fsSL -o "wlroots-${WLROOTS_VERSION}.tar.gz" \
             "https://gitlab.freedesktop.org/wlroots/wlroots/-/archive/${WLROOTS_VERSION}/wlroots-${WLROOTS_VERSION}.tar.gz"
           tar xzf "wlroots-${WLROOTS_VERSION}.tar.gz"
@@ -52,6 +57,7 @@ jobs:
       - name: Build cage
         run: |
           set -e
+          rm -rf "cage-${CAGE_VERSION}" out/cage_*.deb
           cp -a cage "cage-${CAGE_VERSION}"
           (cd "cage-${CAGE_VERSION}" && DEB_BUILD_OPTIONS=nocheck dpkg-buildpackage -us -uc -b)
           mv "cage-${CAGE_VERSION}/../cage_${CAGE_VERSION}-1_arm64.deb" out/
