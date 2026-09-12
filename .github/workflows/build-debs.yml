@@ -39,7 +39,7 @@ jobs:
       - name: Build wlroots
         run: |
           set -e
-          rm -rf out wlroots-*
+          rm -rf out "wlroots-${WLROOTS_VERSION}" "wlroots-${WLROOTS_VERSION}.tar.gz"
           curl -fsSL -o "wlroots-${WLROOTS_VERSION}.tar.gz" \
             "https://gitlab.freedesktop.org/wlroots/wlroots/-/archive/${WLROOTS_VERSION}/wlroots-${WLROOTS_VERSION}.tar.gz"
           tar xzf "wlroots-${WLROOTS_VERSION}.tar.gz"
