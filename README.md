@@ -2,11 +2,11 @@
 
 Builds arm64 Debian .deb packages for a Raspberry Pi 5 kiosk.
 
-cage is forked from its source repository to include the kiosk features we
-need. In this repo the fork is kept as a submodule pinned to the upstream
-commit plus `patches/cage-kiosk-options.patch`, which CI applies at build
-time. That keeps the kiosk changes a single reviewable patch on top of a
-clean upstream tree, so bumping the submodule stays a one-line change.
+This builds on top of https://github.com/cage-kiosk/cage and is kept
+as a submodule pinned to the upstream commit plus `patches/cage-kiosk-options.patch`,
+which CI applies at build time. That keeps the kiosk changes a single 
+reviewable patch on top of a clean upstream tree, so bumping
+the submodule stays a one-line change.
 
 Two packages come out of every build:
 
