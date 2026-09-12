@@ -55,8 +55,8 @@ jobs:
           cp -a wlroots-debian/. "wlroots-${WLROOTS_VERSION}/debian/"
           (cd "wlroots-${WLROOTS_VERSION}" && DEB_BUILD_OPTIONS=nocheck dpkg-buildpackage -us -uc -b)
           mkdir -p out
-          mv "wlroots_${WLROOTS_VERSION}-1_arm64.deb" out/
-          mv "wlroots_0.20.2-1_arm64.buildinfo" "wlroots_0.20.2-1_arm64.changes" out/ 2>/dev/null || true
+          mv "libwlroots-0.20_${WLROOTS_VERSION}-1_arm64.deb" \
+             "libwlroots-0.20-dev_${WLROOTS_VERSION}-1_arm64.deb" out/
 
       - name: Install wlroots debs
         run: |
