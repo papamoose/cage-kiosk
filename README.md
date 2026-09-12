@@ -2,7 +2,7 @@
 
 Builds arm64 Debian .deb packages for a Raspberry Pi 5 kiosk.
 
-This builds on top of https://github.com/cage-kiosk/cage and is kept
+This builds on top of [cage-kiosk/cage](https://github.com/cage-kiosk/cage) and is kept
 as a submodule pinned to the upstream commit plus `patches/cage-kiosk-options.patch`,
 which CI applies at build time. That keeps the kiosk changes a single 
 reviewable patch on top of a clean upstream tree, so bumping
