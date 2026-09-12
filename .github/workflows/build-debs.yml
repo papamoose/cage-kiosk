@@ -29,13 +29,12 @@ jobs:
       - name: Install build dependencies
         run: |
           head -2 /etc/os-release
-          # The runner's network serves a stale package index for
-          # deb.debian.org (wayland 1.23.1 instead of trixie's 1.24.0).
-          # Point apt at the snapshot mirror, which is not cached locally.
-          rm -f /etc/apt/sources.list.d/debian.sources
-          printf 'Types: deb\nURIs: http://snapshot.debian.org/archive/debian/20260901T000000Z\nSuites: trixie\nComponents: main\nSigned-By: /usr/share/keyrings/debian-archive-keyring.pgp\n' > /etc/apt/sources.list.d/debian.sources
-          apt-get -o Acquire::Check-Valid-Until=false update
-          apt-cache policy wayland-server | head -4
+          # wlroots 0.20 needs wayland >= 1.24 and libdrm >= 2.4.129;
+          # trixie main only has 1.23.1/2.4.124. The Raspberry Pi repo
+          # carries the newer ones (same as the kiosk Pi itself).
+          printf 'Types: deb\nURIs: http://archive.raspberrypi.com/debian\nSuites: trixie\nComponents: main\nOptions: [trusted=yes]\n' > /etc/apt/sources.list.d/raspi.sources
+          apt-get update
+          apt-cache policy libwayland-dev libdrm-dev | grep -E "^lib|Candidate" 
           apt-get install -y --no-install-recommends \
             build-essential \
             ca-certificates curl dpkg-dev debhelper fakeroot \
