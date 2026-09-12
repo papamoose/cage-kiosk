@@ -3,6 +3,15 @@ name: build-debs
 on:
   push:
     branches: [main]
+    paths:
+      # only things that change what gets built
+      - "cage"
+      - "cage/**"
+      - "cage-debian/**"
+      - "wlroots-debian/**"
+      - "patches/**"
+      - "keys/**"
+      - ".github/workflows/build-debs.yml"
     tags: ["v*"]
   workflow_dispatch:
 
