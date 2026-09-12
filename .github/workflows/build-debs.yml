@@ -32,7 +32,8 @@ jobs:
           # wlroots 0.20 needs wayland >= 1.24 and libdrm >= 2.4.129;
           # trixie main only has 1.23.1/2.4.124. The Raspberry Pi repo
           # carries the newer ones (same as the kiosk Pi itself).
-          printf 'Types: deb\nURIs: http://archive.raspberrypi.com/debian\nSuites: trixie\nComponents: main\nOptions: [trusted=yes]\n' > /etc/apt/sources.list.d/raspi.sources
+          install -Dm644 keys/raspberrypi-archive-keyring.pgp /usr/share/keyrings/raspberrypi-archive-keyring.pgp
+          printf 'Types: deb\nURIs: http://archive.raspberrypi.com/debian\nSuites: trixie\nComponents: main\nSigned-By: /usr/share/keyrings/raspberrypi-archive-keyring.pgp\n' > /etc/apt/sources.list.d/raspi.sources
           apt-get update
           apt-cache policy libwayland-dev libdrm-dev | grep -E "^lib|Candidate" 
           apt-get install -y --no-install-recommends \
