@@ -29,6 +29,7 @@ jobs:
         run: |
           apt-get update
           apt-get install -y --no-install-recommends \
+            build-essential \
             ca-certificates curl dpkg-dev debhelper fakeroot \
             meson ninja-build pkg-config scdoc \
             libwayland-dev libdrm-dev libxkbcommon-dev libpixman-1-dev \
