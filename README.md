@@ -22,7 +22,8 @@ Two packages come out of every build:
     Raspberry Pi 10" DSI)
 
 Verified on a Raspberry Pi 5 (2 GB, Debian 13 aarch64) with a 10" DSI
-touch panel: landscape output via `-t 90`, working touch, and
+touch panel: landscape output via `-t 90`, working touch, and a clean
+display with no cursor or hover artifacts. The service line:
 
 ```
 cage -s -m last -t 90 -c 960,1199 -- firefox-esr --kiosk http://<url>/
@@ -39,8 +40,9 @@ patches/            the kiosk patch, applied over the submodule at build time
 
 ## Building
 
-GitHub Actions (`.github/workflows/build-debs.yml`) builds on every
-push to `main` and on tags:
+GitHub Actions (`.github/workflows/build-debs.yml`) builds on pushes to
+`main` that touch the build inputs (source, packaging, patches, or the
+workflow itself) and on tags:
 
 1. Runs a Debian trixie container with `--platform linux/arm64`
    (native on the self-hosted arm64 runner).
