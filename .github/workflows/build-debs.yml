@@ -12,7 +12,9 @@ jobs:
     # pins the build environment to the target distro.
     runs-on: [self-hosted, arm64]
     container:
-      image: debian:trixie
+      # pinned by digest: the runner pulls via a registry mirror whose
+      # tag cache was stale (wayland 1.23.1 instead of 1.24.0)
+      image: debian:trixie@sha256:f324c7ff54321e8d9c588493a20244965938ce0aa50bbd1022d38010e9ffc4b1
       options: --platform linux/arm64
     env:
       WLROOTS_VERSION: "0.20.2"
@@ -27,7 +29,9 @@ jobs:
 
       - name: Install build dependencies
         run: |
+          head -2 /etc/os-release
           apt-get update
+          apt-cache policy wayland-server | head -3
           apt-get install -y --no-install-recommends \
             build-essential \
             ca-certificates curl dpkg-dev debhelper fakeroot \
