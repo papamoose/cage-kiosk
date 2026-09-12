@@ -12,8 +12,7 @@ jobs:
     # pins the build environment to the target distro.
     runs-on: [self-hosted, arm64]
     container:
-      # pinned by digest: the runner pulls via a registry mirror whose
-      # tag cache was stale (wayland 1.23.1 instead of 1.24.0)
+      # pinned by digest for reproducible builds
       image: debian:trixie@sha256:f324c7ff54321e8d9c588493a20244965938ce0aa50bbd1022d38010e9ffc4b1
       options: --platform linux/arm64
     env:
@@ -41,7 +40,7 @@ jobs:
             ca-certificates curl dpkg-dev debhelper fakeroot \
             meson ninja-build pkg-config scdoc \
             libwayland-dev libdrm-dev libxkbcommon-dev libpixman-1-dev \
-            libegl-dev libgbm-dev libgl-dev liblcms2-dev libseat-dev \
+            libegl-dev libgbm-dev libgl-dev liblcms2-dev libseat-dev libudev-dev libinput-dev \
             libx11-dev libx11-xcb-dev libxcursor-dev \
             wayland-protocols xwayland hwdata libdisplay-info-dev
 
@@ -62,6 +61,9 @@ jobs:
         run: |
           dpkg -i out/libwlroots-0.20_${WLROOTS_VERSION}-1_arm64.deb \
                   out/libwlroots-0.20-dev_${WLROOTS_VERSION}-1_arm64.deb
+          # fail loudly if the session/DRM backend was silently disabled
+          # (it is, when libseat/libudev/hwdata/libdisplay-info are missing)
+          test -f /usr/include/wlroots-0.20/wlr/backend/session.h
 
       - name: Build cage
         run: |
