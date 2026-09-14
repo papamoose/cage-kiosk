@@ -55,7 +55,7 @@ jobs:
             ca-certificates curl dpkg-dev debhelper fakeroot \
             meson ninja-build pkg-config scdoc \
             libwayland-dev libdrm-dev libxkbcommon-dev libpixman-1-dev \
-            libegl-dev libgbm-dev libgl-dev liblcms2-dev libseat-dev libudev-dev libinput-dev \
+            libegl-dev libgles2-mesa-dev libgbm-dev libgl-dev liblcms2-dev libseat-dev libudev-dev libinput-dev \
             libx11-dev libx11-xcb-dev libxcursor-dev \
             wayland-protocols xwayland hwdata libdisplay-info-dev
 
