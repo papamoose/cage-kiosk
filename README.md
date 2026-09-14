@@ -77,3 +77,8 @@ apt-get install ./libwlroots-0.20_*.deb ./cage_*.deb
 
 `cage` depends on `libwlroots-0.20`, so both must come from this
 repository. The stock trixie `cage` (0.2.0, wlroots 0.18) is replaced.
+
+
+## Notes
+
+wlroots if you require Vulkan add to wlroot build depends: `libvulkan-dev glslang-tools`
