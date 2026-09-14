@@ -57,7 +57,7 @@ jobs:
             libwayland-dev libdrm-dev libxkbcommon-dev libpixman-1-dev \
             libegl-dev libgles2-mesa-dev libgbm-dev libgl-dev liblcms2-dev libseat-dev libudev-dev libinput-dev \
             libx11-dev libx11-xcb-dev libxcursor-dev \
-            wayland-protocols xwayland hwdata libdisplay-info-dev
+            wayland-protocols xwayland hwdata libdisplay-info-dev libliftoff-dev
 
       - name: Build wlroots
         run: |
